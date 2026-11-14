@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c1631">
+<title>Réservation</title>
+<style>
+  :root{--bg:#0c1631;--card:#16244a;--line:#2a3d73;--text:#f6f8ff;--muted:#a3b2d9;--accent:#ff5a4f;--blue:#4c8dff;--bad:#ff8a8a;--ok:#3ddc97}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(520px 260px at 100% 0,rgba(76,141,255,.28),transparent 70%),radial-gradient(460px 240px at 0 0,rgba(255,90,79,.2),transparent 70%),var(--bg);background-repeat:no-repeat;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.4}
+  .wrap{max-width:520px;margin:0 auto;padding:16px 16px 48px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  h1{font-size:22px;margin:0}
+  .lang{display:flex;gap:6px}
+  .lang button{background:transparent;border:1px solid var(--line);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+  .lang button.on{border-color:var(--accent);color:var(--accent)}
+  h2{font-size:15px;color:var(--muted);margin:24px 0 10px;font-weight:600}
+  .days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+  .day{flex:0 0 auto;min-width:78px;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;font-size:14px}
+  .day b{display:block;font-size:20px}
+  .day.on{border-color:var(--accent);background:rgba(255,90,79,.16)}
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .slot{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:12px 0;font-size:15px;cursor:pointer}
+  .slot.on{background:var(--accent);color:#0c1631;border-color:var(--accent);font-weight:700}
+  .slot:disabled{opacity:.3;text-decoration:line-through;cursor:not-allowed}
+  form{margin-top:8px}
+  label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px}
+  input{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:13px;font-size:16px}
+  input:focus{outline:none;border-color:var(--accent)}
+  .summary{margin-top:18px;padding:12px;border:1px dashed var(--accent);border-radius:10px;color:var(--accent);text-align:center}
+  .go{width:100%;margin-top:16px;background:linear-gradient(135deg,var(--accent),#ff8a4f);color:#0c1631;border:0;border-radius:12px;padding:15px;font-size:17px;font-weight:700;cursor:pointer}
+  .go:disabled{opacity:.5}
+  .msg{margin-top:14px;padding:12px;border-radius:10px;font-size:15px}
+  .msg.bad{background:rgba(255,90,79,.15);color:var(--bad)}
+  .stripe{height:7px;border-radius:4px;margin:-6px 0 4px;background:repeating-linear-gradient(-45deg,#ff5a4f 0 12px,#f6f8ff 12px 24px,#4c8dff 24px 36px,#f6f8ff 36px 48px);background-size:68px 100%;animation:slide 1.6s linear infinite}
+  @keyframes slide{to{background-position:68px 0}}
+  .done{text-align:center;padding:40px 8px}
+  .done .big{font-size:56px}
+  .done p{color:var(--muted);font-size:17px}
+  .hide{display:none}
+  .trap{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;opacity:0;pointer-events:none}
+  .empty{color:var(--muted);padding:8px 0}
+  .bench{margin:22px 0 4px;text-align:center;direction:ltr}
+  .bench svg{width:100%;height:auto;max-width:420px;display:block;margin:0 auto}
+  .bench-cap{color:var(--muted);font-size:14px;margin-top:2px}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}}
+  @keyframes walk{from{transform:translateX(170px);opacity:0}12%{opacity:1}to{transform:translateX(0);opacity:1}}
+  @keyframes hop{0%,100%{transform:translateY(0)}10%{transform:translateY(-9px)}20%{transform:translateY(0)}30%{transform:translateY(-9px)}40%{transform:translateY(0)}50%{transform:translateY(-9px)}60%{transform:translateY(0)}70%{transform:translateY(-9px)}80%{transform:translateY(0)}90%{transform:translateY(-5px)}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  .bob{animation:bob 2.6s ease-in-out infinite}
+  .walk{animation:walk 1.3s ease-out both}
+  .hop{animation:hop 1.3s ease-in-out both}
+  .bubble{animation:pulse 2s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+  @media (prefers-reduced-motion:reduce){.bob,.walk,.hop,.bubble,.stripe{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="shopName"></h1>
+    <div class="lang">
+      <button id="btn-fr" onclick="setLang('fr')">FR</button>
+      <button id="btn-ar" onclick="setLang('ar')">عربي</button>
+    </div>
+  </header>
+  <div class="stripe" aria-hidden="true"></div>
+
+  <div id="booking">
+    <h2 id="tDay"></h2>
+    <div class="days" id="days"></div>
+
+    <h2 id="tTime"></h2>
+    <div class="slots" id="slots"></div>
+
+    <div class="bench" id="bench"></div>
+
+    <form id="form" class="hide" onsubmit="submitBooking(event)">
+      <div class="summary" id="summary"></div>
+      <label id="tName" for="name"></label>
+      <input id="name" autocomplete="name" maxlength="60" required>
+      <label id="tPhone" for="phone"></label>
+      <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="20 123 456" required>
+      <div class="trap" aria-hidden="true">
+        <label for="website">Website</label>
+        <input id="website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <div id="msg" class="msg bad hide"></div>
+      <button class="go" id="go" type="submit"></button>
+    </form>
+  </div>
+
+  <div id="done" class="done hide">
+    <div class="big">✅</div>
+    <h2 id="tDoneTitle" style="color:var(--ok);font-size:22px"></h2>
+    <p id="tDoneBody"></p>
+    <div class="bench" id="benchDone"></div>
+    <button class="go" onclick="location.reload()" id="tAgain"></button>
+  </div>
+</div>
+
+<script>
+/* ====== EDIT THESE ====== */
+const CONFIG = {
+  SHOP_NAME: "Salon Barber",          // shop name shown at the top
+  SUPABASE_URL: "PASTE_YOUR_SUPABASE_URL",
+  SUPABASE_ANON_KEY: "PASTE_YOUR_ANON_KEY",
+  OPEN: "09:00",                      // opening time
+  CLOSE: "19:00",                     // closing time (last slot ends here)
+  SLOT_MINUTES: 30,                   // length of one haircut slot
+  CLOSED_DAYS: [1],                   // closed on Monday. (0 = Sunday, 1 = Monday ... 6 = Saturday)
+  DAYS_AHEAD: 2                       // 2 = today and the next open day (1 = today only, 7 = a full week)
+};
+/* ======================== */
+
+const I18N = {
+  fr: {
+    dir: "ltr",
+    title: "Réserver une coupe",
+    day: "Choisissez le jour",
+    time: "Choisissez l'heure",
+    name: "Nom",
+    phone: "Numéro de téléphone",
+    book: "Confirmer la réservation",
+    booking: "Envoi…",
+    summary: (d, t) => `${d} à ${t}`,
+    taken: "Ce créneau vient d'être pris. Choisissez-en un autre.",
+    badPhone: "Numéro invalide (8 chiffres).",
+    active: "Vous avez déjà une réservation à venir avec ce numéro.",
+    blocked: "Réservation impossible avec ce numéro. Contactez le salon.",
+    benchCount: n => n === 1 ? "1 réservation ce jour" : `${n} réservations ce jour`,
+    benchEmpty: "Personne pour l'instant, soyez le premier !",
+    benchDone: "Votre place vous attend. Le minuteur tourne !",
+    now: "À vous !",
+    benchAria: "Banc d'attente avec les clients déjà réservés",
+    error: "Une erreur est survenue. Réessayez.",
+    none: "Aucun créneau disponible ce jour-là.",
+    doneTitle: "Réservation confirmée",
+    doneBody: (d, t) => `On vous attend le ${d} à ${t}.`,
+    again: "Nouvelle réservation",
+    locale: "fr-FR"
+  },
+  ar: {
+    dir: "rtl",
+    title: "احجز موعد حلاقة",
+    day: "اختر اليوم",
+    time: "اختر الوقت",
+    name: "الاسم",
+    phone: "رقم الهاتف",
+    book: "تأكيد الحجز",
+    booking: "جاري الإرسال…",
+    summary: (d, t) => `${d} — ${t}`,
+    taken: "هذا الموعد حُجز للتو، اختر موعدًا آخر.",
+    badPhone: "رقم الهاتف غير صحيح (8 أرقام).",
+    active: "لديك حجز قادم بهذا الرقم بالفعل.",
+    blocked: "لا يمكن الحجز بهذا الرقم. تواصل مع الصالون.",
+    benchCount: n => n === 1 ? "حجز واحد في هذا اليوم" : `عدد الحجوزات في هذا اليوم: ${n}`,
+    benchEmpty: "لا أحد بعد، كن الأول!",
+    benchDone: "مكانك محجوز. العدّاد يعمل!",
+    now: "دورك!",
+    benchAria: "مقعد انتظار فيه الزبائن المحجوزون",
+    error: "حدث خطأ، حاول مرة أخرى.",
+    none: "لا توجد مواعيد متاحة في هذا اليوم.",
+    doneTitle: "تم الحجز",
+    doneBody: (d, t) => `ننتظرك يوم ${d} على الساعة ${t}.`,
+    again: "حجز جديد",
+    locale: "ar-TN"
+  }
+};
+
+let lang = localStorage.getItem("lang") || "fr";
+let selDay = null;      // "YYYY-MM-DD"
+let selTime = null;     // "HH:MM"
+let taken = new Set();  // taken times for selDay
+const $ = id => document.getElementById(id);
+const T = () => I18N[lang];
+
+function ymd(d) {
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${dd}`;
+}
+function fromYmd(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
+function niceDay(s, opts) { return fromYmd(s).toLocaleDateString(T().locale, opts); }
+
+function allTimes() {
+  const [oh, om] = CONFIG.OPEN.split(":").map(Number);
+  const [ch, cm] = CONFIG.CLOSE.split(":").map(Number);
+  const out = [];
+  for (let m = oh * 60 + om; m + CONFIG.SLOT_MINUTES <= ch * 60 + cm; m += CONFIG.SLOT_MINUTES) {
+    out.push(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
+  }
+  return out;
+}
+
+function openDays() {
+  const days = [];
+  const now = new Date();
+  // DAYS_AHEAD = how many OPEN days are shown (closed days are skipped, not counted)
+  for (let i = 0; i < 14 && days.length < CONFIG.DAYS_AHEAD; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (!CONFIG.CLOSED_DAYS.includes(d.getDay())) days.push(ymd(d));
+  }
+  return days;
+}
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem("lang", l);
+  document.documentElement.lang = l;
+  document.documentElement.dir = T().dir;
+  $("btn-fr").classList.toggle("on", l === "fr");
+  $("btn-ar").classList.toggle("on", l === "ar");
+  $("shopName").textContent = CONFIG.SHOP_NAME;
+  document.title = CONFIG.SHOP_NAME + " — " + T().title;
+  $("tDay").textContent = T().day;
+  $("tTime").textContent = T().time;
+  $("tName").textContent = T().name;
+  $("tPhone").textContent = T().phone;
+  $("go").textContent = T().book;
+  $("tAgain").textContent = T().again;
+  renderDays();
+  renderSlots();
+  updateSummary();
+}
+
+function renderDays() {
+  $("days").innerHTML = "";
+  openDays().forEach(s => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "day" + (s === selDay ? " on" : "");
+    b.innerHTML = `${niceDay(s, { weekday: "short" })}<b>${fromYmd(s).getDate()}</b>${niceDay(s, { month: "short" })}`;
+    b.onclick = () => pickDay(s);
+    $("days").appendChild(b);
+  });
+}
+
+function renderSlots() {
+  const box = $("slots");
+  box.innerHTML = "";
+  if (!selDay) return;
+  const now = new Date();
+  const isToday = selDay === ymd(now);
+  const nowStr = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  let free = 0;
+  allTimes().forEach(t => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = t;
+    const unavailable = taken.has(t) || (isToday && t <= nowStr);
+    b.disabled = unavailable;
+    if (!unavailable) free++;
+    b.className = "slot" + (t === selTime ? " on" : "");
+    b.onclick = () => pickTime(t);
+    box.appendChild(b);
+  });
+  if (!free) {
+    const p = document.createElement("div");
+    p.className = "empty";
+    p.style.gridColumn = "1 / -1";
+    p.textContent = T().none;
+    box.appendChild(p);
+  }
+}
+
+/* ===== WAITING BENCH ANIMATION ===== */
+const BENCH = {
+  seats: 6, x0: 44, dx: 58,
+  shirt: ["#4ea8de", "#f4a261", "#2ec4b6", "#b388eb", "#ffd166", "#8ecae6"],
+  pants: ["#3a3f4a", "#4a3f3a", "#2f3a33"],
+  hair:  ["#2a1d14", "#5a3a22", "#161616", "#8b6b3a"],
+  skin:  ["#e0b48f", "#c68e63", "#a8704a", "#f0c9a4"]
+};
+let benchYouShown = false;
+let doneTimer = null;
+
+function figure(shirt, pants, hair, skin) {
+  return `<rect x="-15" y="-28" width="6" height="24" rx="3" fill="${shirt}"/>` +
+    `<rect x="9" y="-28" width="6" height="24" rx="3" fill="${shirt}"/>` +
+    `<rect x="-11" y="-30" width="22" height="32" rx="8" fill="${shirt}"/>` +
+    `<rect x="-11" y="-4" width="22" height="14" rx="5" fill="${pants}"/>` +
+    `<rect x="-10" y="8" width="8" height="22" rx="3" fill="${pants}"/>` +
+    `<rect x="2" y="8" width="8" height="22" rx="3" fill="${pants}"/>` +
+    `<ellipse cx="-6" cy="31" rx="7" ry="3.5" fill="#1c1816"/>` +
+    `<ellipse cx="6" cy="31" rx="7" ry="3.5" fill="#1c1816"/>` +
+    `<circle cx="0" cy="-42" r="10" fill="${skin}"/>` +
+    `<path d="M-10.5 -43 Q-10 -54 0 -54 Q10 -54 10.5 -43 Q4 -48 -10.5 -43Z" fill="${hair}"/>` +
+    `<circle cx="-3.5" cy="-41" r="1.3" fill="#2a2018"/><circle cx="3.5" cy="-41" r="1.3" fill="#2a2018"/>`;
+}
+
+// others = number of people already booked that day; you = null or {text, w, animate, id}
+function benchSVG(others, you) {
+  const shown = Math.min(others, you ? BENCH.seats - 1 : BENCH.seats);
+  let s = `<svg viewBox="0 0 380 140" role="img" aria-label="${T().benchAria}">`;
+  s += `<rect x="0" y="124" width="380" height="2" rx="1" fill="#2a3d73"/>`;
+  s += `<rect x="14" y="50" width="6" height="48" rx="2" fill="#6b4a2d"/><rect x="360" y="50" width="6" height="48" rx="2" fill="#6b4a2d"/>`;
+  s += `<rect x="14" y="58" width="352" height="8" rx="3" fill="#8a6540"/><rect x="14" y="72" width="352" height="8" rx="3" fill="#8a6540"/>`;
+  s += `<rect x="16" y="98" width="8" height="26" rx="2" fill="#6b4a2d"/><rect x="356" y="98" width="8" height="26" rx="2" fill="#6b4a2d"/>`;
+  s += `<rect x="8" y="88" width="364" height="10" rx="4" fill="#b98a56"/>`;
+  for (let i = 0; i < shown; i++) {
+    const cx = BENCH.x0 + i * BENCH.dx;
+    s += `<g transform="translate(${cx},88)"><g class="bob" style="animation-delay:${(i * 0.45).toFixed(2)}s">` +
+      figure(BENCH.shirt[i % 6], BENCH.pants[i % 3], BENCH.hair[(i + 1) % 4], BENCH.skin[(i * 3) % 4]) +
+      `</g></g>`;
+  }
+  if (you) {
+    const cx = BENCH.x0 + shown * BENCH.dx;
+    const w = you.w || 50;
+    s += `<g transform="translate(${cx},88)"><g class="${you.animate ? "walk" : ""}"><g class="${you.animate ? "hop" : ""}"><g class="bob">` +
+      figure("#ff5a4f", "#243055", "#2a1d14", "#e0b48f") +
+      `<g class="bubble"><rect x="${-w / 2}" y="-78" width="${w}" height="20" rx="10" fill="#ff5a4f"/>` +
+      `<path d="M-5 -58.5 L0 -52 L5 -58.5Z" fill="#ff5a4f"/>` +
+      `<text ${you.id ? `id="${you.id}"` : ""} x="0" y="-68" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#0c1631" font-family="system-ui,sans-serif" style="font-variant-numeric:tabular-nums">${you.text}</text></g>` +
+      `</g></g></g></g>`;
+  }
+  return s + `</svg>`;
+}
+
+// The animation only plays when "you" first sit down, not on every re-render.
+function renderBench() {
+  const youOn = !!(selDay && selTime);
+  const animate = youOn && !benchYouShown;
+  benchYouShown = youOn;
+  const others = taken.size;
+  $("bench").innerHTML =
+    benchSVG(others, youOn ? { text: selTime, w: 50, animate } : null) +
+    `<div class="bench-cap">${others ? T().benchCount(others) : T().benchEmpty}</div>`;
+}
+
+function countdownText() {
+  let s = Math.floor((new Date(`${selDay}T${selTime}:00`) - new Date()) / 1000);
+  if (s <= 0) return T().now;
+  const h = String(Math.floor(s / 3600)).padStart(2, "0"); s %= 3600;
+  const m = String(Math.floor(s / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return `${h}:${m}:${sec}`;
+}
+
+function showBenchDone() {
+  $("benchDone").innerHTML =
+    benchSVG(taken.size, { text: countdownText(), w: 74, animate: true, id: "youTimer" }) +
+    `<div class="bench-cap">${T().benchDone}</div>`;
+  clearInterval(doneTimer);
+  doneTimer = setInterval(() => {
+    const t = $("youTimer");
+    if (t) t.textContent = countdownText();
+  }, 1000);
+}
+
+function updateSummary() {
+  renderBench();
+  const show = selDay && selTime;
+  $("form").classList.toggle("hide", !show);
+  if (show) {
+    $("summary").textContent = T().summary(niceDay(selDay, { weekday: "long", day: "numeric", month: "long" }), selTime);
+  }
+}
+
+async function loadTaken() {
+  taken = new Set();
+  try {
+    const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/rpc/get_taken_slots`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ day: selDay })
+    });
+    if (r.ok) {
+      const rows = await r.json();
+      rows.forEach(x => taken.add(String(x.slot_time || x).slice(0, 5)));
+    }
+  } catch (e) { /* offline or not configured yet */ }
+}
+
+function headers() {
+  return {
+    "Content-Type": "application/json",
+    "apikey": CONFIG.SUPABASE_ANON_KEY,
+    "Authorization": "Bearer " + CONFIG.SUPABASE_ANON_KEY
+  };
+}
+
+async function pickDay(s) {
+  selDay = s;
+  selTime = null;
+  hideMsg();
+  renderDays();
+  await loadTaken();
+  renderSlots();
+  updateSummary();
+}
+
+function pickTime(t) {
+  selTime = t;
+  hideMsg();
+  renderSlots();
+  updateSummary();
+  $("form").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function showDone() {
+  $("booking").classList.add("hide");
+  $("done").classList.remove("hide");
+  $("tDoneTitle").textContent = T().doneTitle;
+  $("tDoneBody").textContent = T().doneBody(niceDay(selDay, { weekday: "long", day: "numeric", month: "long" }), selTime);
+  showBenchDone();
+  window.scrollTo(0, 0);
+}
+
+function showMsg(text) { const m = $("msg"); m.textContent = text; m.classList.remove("hide"); }
+function hideMsg() { $("msg").classList.add("hide"); }
+
+async function submitBooking(e) {
+  e.preventDefault();
+  hideMsg();
+  const name = $("name").value.trim();
+  const phone = $("phone").value.replace(/[\s.-]/g, "");
+  if (!/^(\+?216)?\d{8}$/.test(phone)) { showMsg(T().badPhone); return; }
+  const btn = $("go");
+  // Trap field: real people never see it. If it is filled, it is a bot: pretend success, send nothing.
+  if ($("website").value) { showDone(); return; }
+  btn.disabled = true;
+  btn.textContent = T().booking;
+  try {
+    const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/bookings`, {
+      method: "POST",
+      headers: { ...headers(), "Prefer": "return=minimal" },
+      body: JSON.stringify({
+        booking_date: selDay,
+        booking_time: selTime,
+        client_name: name,
+        client_phone: phone
+      })
+    });
+    if (r.status === 201) {
+      showDone();
+      return;
+    }
+    if (r.status === 400) {
+      let text = "";
+      try { text = JSON.stringify(await r.json()); } catch (e) { /* ignore */ }
+      if (text.includes("ACTIVE_BOOKING")) showMsg(T().active);
+      else if (text.includes("PHONE_BLOCKED")) showMsg(T().blocked);
+      else showMsg(T().error);
+    } else if (r.status === 409) {
+      selTime = null;
+      await loadTaken();
+      renderSlots();
+      updateSummary();
+      showMsg(T().taken);
+      $("msg").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } else {
+      showMsg(T().error);
+    }
+  } catch (err) {
+    showMsg(T().error);
+  }
+  btn.disabled = false;
+  btn.textContent = T().book;
+}
+
+setLang(lang);
+pickDay(openDays()[0]);
+</script>
+</body>
+</html>
